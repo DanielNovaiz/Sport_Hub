@@ -1,0 +1,50 @@
+@baseUrl = http://localhost:8000
+
+### 1) Criar User
+POST {{baseUrl}}/api/users/
+Content-Type: application/json
+
+{
+  "email": "smoke.user+001@example.com",
+  "username": "smoke_user_001",
+  "full_name": "Smoke User 001",
+  "phone": "+55 11 99999-0001",
+  "bio": "Usuário para teste smoke",
+  "interests": [
+    {
+      "sport": "futebol",
+      "skill_level": "intermediate",
+      "is_primary": true
+    }
+  ]
+}
+
+> {%
+  client.global.set("user_id", response.body.data.id);
+%}
+
+### 2) Criar Evento
+POST {{baseUrl}}/api/events/
+Content-Type: application/json
+
+{
+  "creator_id": "{{user_id}}",
+  "sport_type": "futebol",
+  "scheduled_time": "2030-01-01T15:00:00",
+  "status": "open",
+  "max_participants": 10,
+  "latitude": -23.55052,
+  "longitude": -46.633308
+}
+
+> {%
+  client.global.set("event_id", response.body.data.id);
+%}
+
+### 3) Join Evento
+POST {{baseUrl}}/api/events/{{event_id}}/join
+Content-Type: application/json
+
+{
+  "user_id": "{{user_id}}"
+}

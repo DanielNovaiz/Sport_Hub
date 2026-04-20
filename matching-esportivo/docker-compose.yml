@@ -1,0 +1,109 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: matching_app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      APP_ENV: development
+      DEBUG: "true"
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-matching_db}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres_dev_password}
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT:-6379}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+    networks:
+      - matching_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # PostgreSQL com PostGIS para queries geoespaciais
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: matching_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-matching_db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres_dev_password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - matching_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis para notificações em tempo real e cache
+  redis:
+    image: redis:7-alpine
+    container_name: matching_redis
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - matching_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # PgAdmin para gerenciamento visual do PostgreSQL (opcional, apenas dev)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: matching_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    networks:
+      - matching_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - dev
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/postgres  # WSL2: monta em ./data/postgres
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/redis    # WSL2: monta em ./data/redis
+
+networks:
+  matching_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

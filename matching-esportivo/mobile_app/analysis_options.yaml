@@ -1,0 +1,16 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    # Freezed/json_serializable meta annotation noise in generated-model workflow
+    invalid_annotation_target: ignore
+
+    # Flutter 3.35+ deprecation wave (withOpacity/value/desireAccuracy)
+    # Mantido como ignore para estabilizar primeira build APK sem ruído.
+    deprecated_member_use: ignore
+
+linter:
+  rules:
+    prefer_const_constructors: true
+    prefer_const_literals_to_create_immutables: true
+    prefer_const_declarations: true
