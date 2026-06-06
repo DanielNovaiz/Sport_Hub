@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: matching_app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app --reload-dir tests
     environment:
       APP_ENV: development
       DEBUG: "true"
@@ -38,14 +38,14 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres_dev_password}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_HOST_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - matching_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-matching_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -57,7 +57,7 @@ services:
     container_name: matching_redis
     command: redis-server --appendonly yes
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_HOST_PORT:-6380}:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -89,17 +89,11 @@ services:
 
 volumes:
   postgres_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${PWD}/data/postgres  # WSL2: monta em ./data/postgres
+    external: true
+    name: matching-esportivo_postgres_data
   redis_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${PWD}/data/redis    # WSL2: monta em ./data/redis
+    external: true
+    name: matching-esportivo_redis_data
 
 networks:
   matching_network:

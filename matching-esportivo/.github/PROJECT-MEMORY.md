@@ -17,7 +17,6 @@ Este arquivo é a memória operacional do projeto. Ele deve ser fácil de ler po
 ## Próximos passos
 
 - Criar migrations quando o schema estiver estável.
-- Adicionar testes para `get_nearby_events`.
 - Expandir ranking de matching para balancear distância e habilidade.
 - Ligar Redis Pub/Sub aos alertas de proximidade.
 - Evoluir notificação para marcação de lido e histórico por tipo (`invite`, `match`, `event_update`).
@@ -28,6 +27,7 @@ Este arquivo é a memória operacional do projeto. Ele deve ser fácil de ler po
 ## Implementações feitas
 
 - `Event` com `Geometry(POINT, 4326)`.
+- Teste de `find_nearby_events` adicionado cobrindo query espacial, filtro de esporte e retorno serializável.
 - `User` e `UserInterest` como SQLModel.
 - `get_nearby_events` com `ST_DWithin`.
 - Endpoints de `User` completos (`POST`, `GET by id`, `GET list`, `PATCH`, `DELETE`).
@@ -143,6 +143,11 @@ Este arquivo é a memória operacional do projeto. Ele deve ser fácil de ler po
 - Se a feature envolver proximidade, evitar Haversine manual.
 - Se a feature for nova, entregar Model + Schema + Service + API na mesma leva.
 - Se houver regra nova de IA, atualizar também o `copilot-instructions.md`.
+- Backend canônico: `app/api/`, `app/services/`, `app/models/`, `app/schemas/`.
+- Auth canônico: `app/api/auth.py`; `backend_auth_endpoints.py` fica apenas como compatibilidade.
+- Mobile canônico: `mobile_app/lib/presentation/` para UI e `mobile_app/lib/data/` para contratos e persistência.
+- Arquivos raiz `backend_*_endpoints.py` são auxiliares/exemplos até migração formal.
+- Árvores legadas em `mobile_app/lib/screens/`, `mobile_app/lib/models/` e `mobile_app/lib/services/` devem ser tratadas como compatibilidade temporária, não como superfície principal.
 
 ---
 

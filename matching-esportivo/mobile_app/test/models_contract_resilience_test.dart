@@ -57,7 +57,8 @@ void main() {
       expect(event.remainingSpots, 7);
     });
 
-    test('parses variable row shape [event, distance, priority, confirmed]', () {
+    test('parses variable row shape [event, distance, priority, confirmed]',
+        () {
       final event = FeedEvent.fromDynamic([
         {
           'id': 'evt-3',

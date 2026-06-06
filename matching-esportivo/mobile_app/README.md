@@ -1,17 +1,29 @@
-# matching_esportivo_mobile
+# Matching Esportivo Mobile
 
-A new Flutter project.
+Aplicativo Flutter/Dart do projeto Matching Esportivo.
 
-## Getting Started
+## Stack
 
-This project is a starting point for a Flutter application.
+- Flutter 3.22+
+- Provider para estado global
+- GetIt para injeção de dependências
+- Dio para HTTP
+- SharedPreferences e storage local para cache
 
-A few resources to get you started if this is your first Flutter project:
+## Estrutura principal
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- `lib/main.dart` - bootstrap do app, rotas e providers globais
+- `lib/service_locator.dart` - registro das dependências
+- `lib/core/` - tema, ambiente, autenticação, cache e serviços comuns
+- `lib/data/` - modelos e integrações com API/local storage
+- `lib/presentation/` - telas, providers e widgets
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Execução
+
+1. Instale as dependências com `flutter pub get`.
+2. Rode a aplicação com `flutter run`.
+3. Execute os testes com `flutter test`.
+
+## Observação
+
+O app usa o backend FastAPI do diretório `matching-esportivo/` como origem de dados.

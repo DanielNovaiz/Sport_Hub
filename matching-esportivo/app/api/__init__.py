@@ -5,6 +5,7 @@ from __future__ import annotations
 from importlib import import_module
 
 __all__ = [
+    "auth_router",
     "clubs_router",
     "events_router",
     "feed_router",
@@ -18,6 +19,7 @@ __all__ = [
 
 
 _ROUTER_MODULES = {
+    "auth_router": "app.api.auth",
     "clubs_router": "app.api.clubs",
     "events_router": "app.api.events",
     "feed_router": "app.api.feed",

@@ -125,6 +125,31 @@ async def get_nearby_events(...):
 
 ---
 
+## Fontes canônicas do repositório
+
+### Backend
+
+- Routers canônicos ficam em `app/api/`.
+- Serviços canônicos ficam em `app/services/`.
+- Schemas canônicos ficam em `app/schemas/`.
+- Modelos canônicos ficam em `app/models/`.
+- Arquivos na raiz como `backend_*_endpoints.py` são exemplos, rascunhos ou superfícies auxiliares; não devem virar a fonte principal sem migração explícita.
+
+### Mobile
+
+- A árvore canônica de UI é `mobile_app/lib/presentation/`.
+- A árvore canônica de dados/contratos é `mobile_app/lib/data/`.
+- Caminhos legados em `mobile_app/lib/screens/`, `mobile_app/lib/models/` e `mobile_app/lib/services/` só devem existir se estiverem documentados como compatibilidade temporária.
+
+### Regra anti-drift
+
+- Se houver duas implementações para a mesma responsabilidade, escolha uma canônica e marque a outra como legado ou remova-a.
+- Nunca introduza um segundo contrato com o mesmo nome para responsabilidades diferentes.
+- Sempre atualize `PROJECT-MEMORY.md` quando um caminho canônico mudar.
+- Se um arquivo for somente exemplo, diga isso no nome, na docstring ou na memória do projeto.
+
+---
+
 ## Database-First
 
 Toda lógica que puder ser processada no **PostGIS** deve ser feita via SQL/SQLAlchemy.
@@ -258,6 +283,12 @@ Especialista em lógica de exatas.
 
 - validar comportamento principal.
 - testar services puros quando possível.
+
+### 6. Manutenção guiada por IA
+
+- Antes de editar, localize a fonte canônica da responsabilidade.
+- Se existir duplicação, documente a escolha e remova a superfície sobrante quando possível.
+- Prefira mudanças pequenas que reduzam ambiguidades de navegação para outro agente.
 - cobertura forte em Modo A, cobertura suficiente em Modo B.
 
 ---

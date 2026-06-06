@@ -16,7 +16,7 @@ from app.core.logger import configure_logging
 from app.repositories import StructuredTelemetryRepository
 from app.middleware.match_performance_rate_limit import MatchPerformanceRateLimitMiddleware
 from app.services.self_healing_service import recalculate_impossible_overalls
-from app.api import clubs_router, events_router, feed_router, notifications_router, users_router, ranked_router, ranking_router, chat_router, court_router
+from app.api import auth_router, clubs_router, events_router, feed_router, notifications_router, users_router, ranked_router, ranking_router, chat_router, court_router
 
 # Configurar logging
 configure_logging(settings.log_level)
@@ -35,10 +35,12 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("starting_application", extra={"app": settings.app_name, "env": settings.app_env})
     try:
-        await init_db()
+        db_ready = await init_db()
+        if not db_ready:
+            logger.warning("database_starting_in_degraded_mode")
     except Exception as error:
         logger.exception("database_startup_failed", extra={"error": str(error)})
-        raise
+        logger.warning("database_starting_in_degraded_mode")
 
     try:
         redis_client = await get_redis()
@@ -91,6 +93,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # Incluir routers
 app.include_router(events_router)
+app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(clubs_router)
 app.include_router(feed_router)

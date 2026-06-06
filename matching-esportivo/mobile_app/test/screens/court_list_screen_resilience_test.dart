@@ -9,7 +9,8 @@ import 'package:matching_esportivo_mobile/services/api_service.dart';
 
 class _PermissionDeniedLocationService implements CourtLocationService {
   @override
-  Future<LocationPermission> checkPermission() async => LocationPermission.whileInUse;
+  Future<LocationPermission> checkPermission() async =>
+      LocationPermission.whileInUse;
 
   @override
   Future<Position> getCurrentPosition() {
@@ -20,7 +21,8 @@ class _PermissionDeniedLocationService implements CourtLocationService {
   Future<bool> isLocationServiceEnabled() async => true;
 
   @override
-  Future<LocationPermission> requestPermission() async => LocationPermission.whileInUse;
+  Future<LocationPermission> requestPermission() async =>
+      LocationPermission.whileInUse;
 }
 
 class _ResilientCourtsApiService extends ApiService {
@@ -34,7 +36,7 @@ class _ResilientCourtsApiService extends ApiService {
     String? sportType,
     int limit = 100,
   }) async {
-    throw const AppException(message: 'Falha PostGIS nearby (simulada)');
+    throw AppException('Falha PostGIS nearby (simulada)');
   }
 
   @override
@@ -59,7 +61,9 @@ class _ResilientCourtsApiService extends ApiService {
 }
 
 void main() {
-  testWidgets('CourtListScreen usa fallback Novo Mundo e captura AppException sem quebrar o fluxo', (tester) async {
+  testWidgets(
+      'CourtListScreen usa fallback Novo Mundo e captura AppException sem quebrar o fluxo',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: CourtListScreen(
@@ -76,12 +80,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(
-      find.text('Sem GPS disponível. Usando referência de Goiânia (setor Novo Mundo).'),
+      find.text(
+          'Sem GPS disponível. Usando referência de Goiânia (setor Novo Mundo).'),
       findsOneWidget,
     );
 
     expect(
-      find.text('Conexão instável no setor Novo Mundo. Exibindo quadras próximas em modo resiliente.'),
+      find.text(
+          'Conexão instável no setor Novo Mundo. Exibindo quadras próximas em modo resiliente.'),
       findsOneWidget,
     );
 

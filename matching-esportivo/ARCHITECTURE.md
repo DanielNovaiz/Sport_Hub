@@ -1,5 +1,7 @@
 # 🏗️ Arquitetura do Sistema - Matching Esportivo
 
+> Estado atual do repositório: backend FastAPI em Python e frontend mobile em Flutter/Dart. O diagrama abaixo reflete uma visão histórica/objetivo e não um frontend web React já implementado neste workspace.
+
 ## 1. Diagrama de Sistema
 
 ```
