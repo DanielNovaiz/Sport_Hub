@@ -1,0 +1,40 @@
+name: Apply Branch Protection
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  administration: write
+
+jobs:
+  protect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply protections
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const branches = ['main','develop','staging'];
+            for (const branch of branches) {
+              try {
+                await github.rest.repos.updateBranchProtection({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  branch: branch,
+                  required_status_checks: null,
+                  enforce_admins: false,
+                  required_pull_request_reviews: {
+                    dismissal_restrictions: {},
+                    dismiss_stale_reviews: true,
+                    require_code_owner_reviews: false,
+                    required_approving_review_count: 1
+                  },
+                  restrictions: null
+                });
+                core.info(`Protected branch ${branch}`);
+              } catch (e) {
+                core.warning(`Could not protect ${branch}: ${e.message}`);
+              }
+            }
