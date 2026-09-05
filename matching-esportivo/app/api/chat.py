@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
+from app.api.deps import require_user
 from app.models.chat import ChatRoom
 from app.schemas.chat import ChatMessageCreate, ChatMessageListResponse, ChatMessageResponse, ChatRoomRead, ChatRoomResponse
 from app.services.chat_service import create_chat_room, list_messages, send_message
@@ -15,6 +16,7 @@ router = APIRouter(prefix="/api/chat", tags=["Chat"])
 async def create_room(
     event_id: str,
     session: AsyncSession = Depends(get_session),
+    _auth: str = Depends(require_user),
 ) -> ChatRoomResponse:
     """Criar sala de chat para um evento."""
     room = await create_chat_room(session, event_id)
@@ -29,6 +31,7 @@ async def list_room_messages(
     room_id: str,
     limit: int = 100,
     session: AsyncSession = Depends(get_session),
+    _auth: str = Depends(require_user),
 ) -> ChatMessageListResponse:
     """Get room messages for simple polling."""
     messages = await list_messages(session, room_id, limit=limit)
@@ -43,6 +46,7 @@ async def list_room_messages(
 async def get_room(
     room_id: str,
     session: AsyncSession = Depends(get_session),
+    _auth: str = Depends(require_user),
 ) -> ChatRoomResponse:
     """Obter detalhes da sala de chat."""
     room = await session.get(ChatRoom, room_id)
@@ -62,6 +66,7 @@ async def send_msg(
     room_id: str,
     payload: ChatMessageCreate,
     session: AsyncSession = Depends(get_session),
+    _auth: str = Depends(require_user),
 ) -> ChatMessageResponse:
     """Enviar mensagem na sala de chat (persistida + Redis Pub/Sub)."""
     room = await session.get(ChatRoom, room_id)

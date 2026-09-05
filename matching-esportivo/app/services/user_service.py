@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.security import verify_password
 from app.models.player_stats import PlayerStats
 from app.models.player_stats import UserAchievement, UserXP
 from app.models.user import User, UserInterest
@@ -38,6 +39,25 @@ ACHIEVEMENT_TIER_ORDER: dict[str, int] = {
     "Silver": 1,
     "Gold": 2,
 }
+
+
+async def authenticate_user(session: AsyncSession, email: str, password: str) -> User | None:
+    """Autentica um usuário por e-mail + senha contra a tabela ``User``.
+
+    A senha é verificada via hash scrypt (``security.verify_password``). Retorna
+    ``None`` tanto para e-mail inexistente quanto para senha incorreta, mantendo a
+    resposta genérica (evita enumeração de contas).
+    """
+    normalized = (email or "").strip().lower()
+    if not normalized or not password:
+        return None
+    result = await session.execute(select(User).where(func.lower(User.email) == normalized))
+    user = result.scalars().first()
+    if user is None or not user.hashed_password:
+        return None
+    if not verify_password(password, user.hashed_password):
+        return None
+    return user
 
 
 async def _load_user_with_interests(

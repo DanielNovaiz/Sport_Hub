@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import random
-from datetime import UTC, datetime, timedelta
 from time import perf_counter
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from jose import jwt
 from pydantic import ValidationError
 
-from app.core.config import settings
+from app.core.security import encode_access_token
 from app.middleware.match_performance_rate_limit import MatchPerformanceRateLimitMiddleware
 from app.models.player_stats import MatchPerformance
 from app.schemas.club import ClubCreate
@@ -21,11 +19,7 @@ from app.services.xp_service import process_match_performance
 
 
 def _build_token(subject: str) -> str:
-    payload = {
-        "sub": subject,
-        "exp": int((datetime.now(UTC) + timedelta(minutes=30)).timestamp()),
-    }
-    return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+    return encode_access_token(subject)
 
 
 @pytest.mark.asyncio

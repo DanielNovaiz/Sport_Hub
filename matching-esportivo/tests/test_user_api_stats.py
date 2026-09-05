@@ -5,6 +5,11 @@ from fastapi.testclient import TestClient
 
 from app.api.users import router as users_router
 from app.core.database import get_session
+from app.core.security import encode_access_token
+
+
+def _auth_header() -> dict[str, str]:
+    return {"Authorization": f"Bearer {encode_access_token('user-1')}"}
 
 
 def test_user_profile_and_stats_routes_smoke(monkeypatch) -> None:
@@ -78,6 +83,7 @@ def test_user_profile_and_stats_routes_smoke(monkeypatch) -> None:
         updated = client.patch(
             "/api/users/me/stats",
             json={"user_id": "user-1", "position": "atacante", "shooting": 90, "pace": 89},
+            headers=_auth_header(),
         )
         assert updated.status_code == 200
         assert updated.json()["message"] == "user_stats_updated"

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
+from app.api.deps import require_user
 from app.schemas.user import (
     PlayerStatsResponse,
     PlayerStatsUpdate,
@@ -103,6 +104,7 @@ async def update_user_endpoint(
 async def update_user_stats_endpoint(
     payload: PlayerStatsUpdate,
     session: AsyncSession = Depends(get_session),
+    _auth: str = Depends(require_user),
 ) -> PlayerStatsResponse:
     """Input: atributos do jogador. Output: stats atualizados com overall e arquétipo."""
     try:

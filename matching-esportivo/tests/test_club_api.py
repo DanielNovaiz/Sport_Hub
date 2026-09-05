@@ -5,7 +5,12 @@ from fastapi.testclient import TestClient
 
 from app.api.clubs import router as clubs_router
 from app.core.database import get_session
+from app.core.security import encode_access_token
 from app.schemas.club import ClubJoinResponse, ClubRead
+
+
+def _auth_header(subject: str = "owner-1") -> dict[str, str]:
+    return {"Authorization": f"Bearer {encode_access_token(subject)}"}
 
 
 def test_club_api_routes_smoke(monkeypatch) -> None:
@@ -69,6 +74,7 @@ def test_club_api_routes_smoke(monkeypatch) -> None:
                 "latitude": -23.55,
                 "longitude": -46.63,
             },
+            headers=_auth_header(),
         )
         assert response.status_code == 201
         assert response.json()["message"] == "club_created"
@@ -80,6 +86,7 @@ def test_club_api_routes_smoke(monkeypatch) -> None:
         join = client.post(
             "/api/clubs/club-1/join",
             json={"user_id": "user-2"},
+            headers=_auth_header("user-2"),
         )
         assert join.status_code == 200
         assert join.json()["message"] == "club_join_requested"

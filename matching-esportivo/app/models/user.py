@@ -42,6 +42,7 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     last_login: datetime | None = Field(default=None)
+    hashed_password: str | None = Field(default=None, max_length=255)
 
     interests: list["UserInterest"] = Relationship(
         back_populates="user",

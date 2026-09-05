@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
+from app.api.deps import require_user
 from app.schemas.club import (
     ClubCreate,
     ClubJoinRequest,
@@ -34,6 +35,7 @@ router = APIRouter(prefix="/api/clubs", tags=["clubs"])
 async def create_club_endpoint(
     payload: ClubCreate,
     session: AsyncSession = Depends(get_session),
+    _auth: str = Depends(require_user),
 ) -> ClubResponse:
     """Input: ClubCreate. Output: clube criado."""
     try:
@@ -68,6 +70,7 @@ async def join_club_endpoint(
     club_id: str,
     payload: ClubJoinRequest,
     session: AsyncSession = Depends(get_session),
+    _auth: str = Depends(require_user),
 ) -> ClubJoinResponse:
     """Input: club_id/user_id. Output: membership member/pending."""
     try:
@@ -92,6 +95,7 @@ async def approve_club_member_endpoint(
     user_id: str,
     payload: ClubMembershipReviewRequest,
     session: AsyncSession = Depends(get_session),
+    _auth: str = Depends(require_user),
 ) -> ClubMembershipReviewResponse:
     """Input: reviewer/target. Output: membership aprovada."""
     try:
@@ -116,6 +120,7 @@ async def reject_club_member_endpoint(
     user_id: str,
     payload: ClubMembershipReviewRequest,
     session: AsyncSession = Depends(get_session),
+    _auth: str = Depends(require_user),
 ) -> ClubMembershipReviewResponse:
     """Input: reviewer/target. Output: membership removida."""
     try:

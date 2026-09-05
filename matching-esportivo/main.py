@@ -16,6 +16,7 @@ from app.core.logger import configure_logging
 from app.repositories import StructuredTelemetryRepository
 from app.middleware.match_performance_rate_limit import MatchPerformanceRateLimitMiddleware
 from app.services.self_healing_service import recalculate_impossible_overalls
+from app.api.auth import seed_auth_user
 from app.api import auth_router, clubs_router, events_router, feed_router, notifications_router, users_router, ranked_router, ranking_router, chat_router, court_router
 
 # Configurar logging
@@ -41,6 +42,13 @@ async def lifespan(app: FastAPI):
     except Exception as error:
         logger.exception("database_startup_failed", extra={"error": str(error)})
         logger.warning("database_starting_in_degraded_mode")
+
+    try:
+        async with async_session() as session:
+            await seed_auth_user(session)
+        logger.info("auth_seed_checked")
+    except Exception as error:
+        logger.warning("auth_seed_failed", extra={"error": str(error)})
 
     try:
         redis_client = await get_redis()
@@ -167,7 +175,6 @@ async def health_check() -> dict[str, str]:
                 "status": "unhealthy",
                 "app": "operational",
                 "database": "disconnected",
-                "error": str(e),
             },
         )
     
@@ -219,7 +226,6 @@ async def health_check_db() -> dict[str, str]:
                 "status": "unhealthy",
                 "database": "disconnected",
                 "postgis": "unavailable",
-                "error": str(e),
             },
         )
 
@@ -240,7 +246,7 @@ async def health_check_redis() -> dict[str, str]:
         logger.error("redis_healthcheck_failed", extra={"error": str(error)})
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "unhealthy", "redis": "disconnected", "error": str(error)},
+            content={"status": "unhealthy", "redis": "disconnected"},
         )
 
 
