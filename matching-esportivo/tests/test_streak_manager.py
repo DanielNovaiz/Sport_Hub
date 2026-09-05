@@ -1,25 +1,13 @@
 from __future__ import annotations
 
-import importlib.util
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
-import sys
 
 import pytest
 
 from app.models.player_stats import MatchPerformance, PlayerStats
 from tests.conftest import FakeAsyncSession, FakeResult
 
-
-_STREAK_SERVICE_PATH = Path(__file__).resolve().parents[1] / "app" / "services" / "streak_manager.py"
-_STREAK_SPEC = importlib.util.spec_from_file_location("streak_manager_for_tests", _STREAK_SERVICE_PATH)
-assert _STREAK_SPEC and _STREAK_SPEC.loader
-_STREAK_MODULE = importlib.util.module_from_spec(_STREAK_SPEC)
-sys.modules[_STREAK_SPEC.name] = _STREAK_MODULE
-_STREAK_SPEC.loader.exec_module(_STREAK_MODULE)
-
-evaluate_on_fire_streak = _STREAK_MODULE.evaluate_on_fire_streak
-PHYSICAL_BONUS_ATTRIBUTES = _STREAK_MODULE.PHYSICAL_BONUS_ATTRIBUTES
+from app.services.streak_manager import evaluate_on_fire_streak, PHYSICAL_BONUS_ATTRIBUTES
 
 
 def _match(user_id: str, team_score: int, opponent_score: int, minutes_ago: int) -> MatchPerformance:

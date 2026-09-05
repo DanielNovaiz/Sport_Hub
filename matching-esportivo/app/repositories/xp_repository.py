@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.player_stats import PlayerStats, UserAchievement, UserXP
-from app.services.xp_constants import ALL_PROGRESS_ATTRIBUTES
+from app.domain.xp_constants import ALL_PROGRESS_ATTRIBUTES
 
 
 @dataclass(frozen=True)
@@ -87,7 +87,7 @@ class SqlAlchemyXpRepository:
             code_count = int(code_count_result.scalar_one() or 0)
             total_count = int(total_count_result.scalar_one() or 0)
 
-            from app.services.achievement_service import apply_achievement_rarity_bonus, resolve_achievement_rarity
+            from app.domain.achievement_rules import apply_achievement_rarity_bonus, resolve_achievement_rarity
 
             rarity_tier = resolve_achievement_rarity(code_count, total_count)
             base_bonus_value = max(trigger.bonus_attributes.values(), default=0)

@@ -7,8 +7,7 @@ from fastapi.testclient import TestClient
 from jose import jwt
 
 from app.core.config import settings
-from backend_auth_endpoints import router
-
+from app.api.auth import router
 
 def _build_client() -> TestClient:
     app = FastAPI()

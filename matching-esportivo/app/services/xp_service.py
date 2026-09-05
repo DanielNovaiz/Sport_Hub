@@ -3,20 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from contextlib import nullcontext
-import importlib.util
 import logging
-from pathlib import Path
 from time import perf_counter
 from typing import Any, Mapping
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.player_stats import MatchPerformance, PlayerStats
-from app.models.player_stats import UserAchievement, UserXP
-from app.services.xp_constants import ALL_PROGRESS_ATTRIBUTES
+from app.models.player_stats import UserAchievement
+from app.domain.xp_constants import ALL_PROGRESS_ATTRIBUTES
+from app.domain.overall_calculator import _clamp_stat, _get_stat_value
 from app.services.overall_engine import OverallRequest, calculate_overall_async
 from app.services.maintenance_service import sync_user_prestige_entries
 from app.repositories import StructuredTelemetryRepository, SqlAlchemyXpRepository
@@ -24,19 +22,11 @@ from app.repositories.xp_repository import AchievementTriggerLike
 
 logger = logging.getLogger(__name__)
 
-_CALCULATIONS_MODULE = None
 
 XP_PER_LEVEL = 60
 MAX_LEVEL_GAIN_PER_MATCH = 3
 MAX_XP_APPLIED_PER_MATCH = XP_PER_LEVEL * MAX_LEVEL_GAIN_PER_MATCH
 
-BASKETBALL_PACKAGES: dict[str, tuple[str, ...]] = {
-    "finalizacao": ("shoot_long", "shoot_mid", "shoot_short", "finishing"),
-    "fisico": ("velocity", "jump", "agility", "energy", "strength", "balance"),
-    "armacao": ("passing", "ball_control", "vision", "dribble"),
-    "defesa": ("steal", "block", "perim_def", "post_def"),
-    "rebote": ("rebound", "reb_predict", "combativeness"),
-}
 
 BASKETBALL_PACKAGE_SPLITS: dict[str, dict[str, float]] = {
     "finalizacao": {
@@ -72,188 +62,6 @@ BASKETBALL_PACKAGE_SPLITS: dict[str, dict[str, float]] = {
     },
 }
 
-BASKETBALL_POSITION_WEIGHTS: dict[str, dict[str, float]] = {
-    "armador": {
-        "finalizacao": 2.0,
-        "fisico": 1.0,
-        "armacao": 3.0,
-        "defesa": 1.0,
-        "rebote": 1.0,
-    },
-    "ala": {
-        "finalizacao": 2.5,
-        "fisico": 2.0,
-        "armacao": 1.5,
-        "defesa": 2.0,
-        "rebote": 1.0,
-    },
-    "pivo": {
-        "finalizacao": 1.0,
-        "fisico": 2.0,
-        "armacao": 0.5,
-        "defesa": 3.0,
-        "rebote": 4.0,
-    },
-    "default": {
-        "finalizacao": 1.0,
-        "fisico": 1.0,
-        "armacao": 1.0,
-        "defesa": 1.0,
-        "rebote": 1.0,
-    },
-}
-
-BASKETBALL_POSITION_ALIASES: dict[str, str] = {
-    "armador": "armador",
-    "point_guard": "armador",
-    "pg": "armador",
-    "ala": "ala",
-    "wing": "ala",
-    "sg": "ala",
-    "pivo": "pivo",
-    "pivô": "pivo",
-    "center": "pivo",
-    "center_basket": "pivo",
-    "c": "pivo",
-}
-
-FOOTBALL_PACKAGES: dict[str, tuple[str, ...]] = {
-    "finalizacao": ("short_finish", "long_shot", "free_kick"),
-    "mobilidade": ("sprint", "acceleration", "agility"),
-    "fisico": ("stamina", "strength", "balance"),
-    "criacao": ("short_pass", "long_pass", "crossing", "vision", "dribbling", "ball_control"),
-    "defesa": ("tackle", "interception", "marking", "ball_shielding"),
-}
-
-FOOTBALL_POSITION_WEIGHTS: dict[str, dict[str, float]] = {
-    "atacante": {
-        "finalizacao": 3.0,
-        "mobilidade": 2.0,
-        "fisico": 1.5,
-        "criacao": 0.8,
-        "defesa": 0.7,
-    },
-    "ponta": {
-        "finalizacao": 2.5,
-        "mobilidade": 3.0,
-        "fisico": 2.0,
-        "criacao": 1.2,
-        "defesa": 0.2,
-    },
-    "lateral": {
-        "finalizacao": 0.8,
-        "mobilidade": 2.0,
-        "fisico": 2.5,
-        "criacao": 2.0,
-        "defesa": 3.0,
-    },
-    "meia": {
-        "finalizacao": 1.5,
-        "mobilidade": 2.5,
-        "fisico": 1.8,
-        "criacao": 3.0,
-        "defesa": 1.2,
-    },
-    "zagueiro": {
-        "finalizacao": 0.5,
-        "mobilidade": 1.5,
-        "fisico": 2.5,
-        "criacao": 1.0,
-        "defesa": 3.5,
-    },
-    "goleiro": {
-        "finalizacao": 0.0,
-        "mobilidade": 1.0,
-        "fisico": 2.5,
-        "criacao": 0.5,
-        "defesa": 3.5,
-    },
-    "default": {
-        "finalizacao": 1.0,
-        "mobilidade": 1.0,
-        "fisico": 1.0,
-        "criacao": 1.0,
-        "defesa": 1.0,
-    },
-}
-
-FOOTBALL_POSITION_ALIASES: dict[str, str] = {
-    "atacante": "atacante",
-    "forward": "atacante",
-    "fw": "atacante",
-    "st": "atacante",
-    "ponta": "ponta",
-    "wing": "ponta",
-    "winger": "ponta",
-    "rw": "ponta",
-    "lw": "ponta",
-    "lateral": "lateral",
-    "back": "lateral",
-    "fullback": "lateral",
-    "rb": "lateral",
-    "lb": "lateral",
-    "meia": "meia",
-    "midfielder": "meia",
-    "cm": "meia",
-    "cdm": "meia",
-    "cam": "meia",
-    "zagueiro": "zagueiro",
-    "defender": "zagueiro",
-    "cb": "zagueiro",
-    "goleiro": "goleiro",
-    "goleira": "goleiro",
-    "goalkeeper": "goleiro",
-    "gk": "goleiro",
-    "portero": "goleiro",
-    "sem_posicao": "default",
-    "sem_posição": "default",
-    "rodiziо": "default",
-    "rodizio": "default",
-}
-
-VOLLEYBALL_POSITION_ALIASES: dict[str, str] = {
-    "levantador": "levantador",
-    "setter": "levantador",
-    "ponteiro": "ponteiro",
-    "wing_spiker": "ponteiro",
-    "ws": "ponteiro",
-    "central": "central",
-    "middle_blocker": "central",
-    "mb": "central",
-    "oposto": "oposto",
-    "opposite": "oposto",
-    "op": "oposto",
-    "libero": "libero",
-    "liber0": "libero",
-    "libera": "libero",
-    "defensive_specialist": "libero",
-    "ds": "libero",
-    "sem_posicao": "default",
-    "sem_posição": "default",
-    "rodiziо": "default",
-    "rodizio": "default",
-}
-
-VOLLEYBALL_BEACH_ATTRIBUTES: tuple[str, ...] = tuple(
-    dict.fromkeys(
-        (
-            *tuple(attr for attrs in (
-                ("spike_power", "spike_accuracy", "jump", "reaction"),
-                ("serve_power", "serve_tactical", "game_vision"),
-                ("block", "reception", "floor_defense", "coverage"),
-                ("setting", "creativity", "game_vision"),
-                ("lateral_agility", "reaction", "stamina", "coordination"),
-            ) for attr in attrs),
-            "sand_agility",
-            "jumping_endurance",
-        )
-    )
-)
-
-VOLLEYBALL_BEACH_WEIGHTS: dict[str, float] = {
-    "sand_agility": 1.5,
-    "jumping_endurance": 1.5,
-}
 
 PROFILE_SPORT_ALIASES: dict[str, str] = {
     "basquete": "BASKETBALL",
@@ -297,8 +105,6 @@ class PackageXpBreakdown:
     attribute_xp: dict[str, int]
 
 
-def _clamp_stat(value: int) -> int:
-    return max(0, min(99, int(value)))
 
 
 def _resolve_xp_per_level(overall: int | None) -> int:
@@ -306,19 +112,8 @@ def _resolve_xp_per_level(overall: int | None) -> int:
     return XP_PER_LEVEL
 
 
-def _normalize_position(position: str | None) -> str:
-    if not position:
-        return "default"
-    normalized = position.strip().lower().replace(" ", "_")
-    if normalized == "midfielder":
-        return "meia"
-    return BASKETBALL_POSITION_ALIASES.get(normalized, normalized)
 
 
-def _get_stat_value(source: PlayerStats | Mapping[str, int], name: str) -> int:
-    if isinstance(source, Mapping):
-        return _clamp_stat(source.get(name, 0) or 0)
-    return _clamp_stat(getattr(source, name, 0) or 0)
 
 
 def _format_achievement_bonus(bonus_attributes: Mapping[str, int]) -> str:
@@ -350,310 +145,6 @@ def _build_achievement_log(*, user_id: str, achievement_name: str, tier: str, bo
     )
 
 
-def _package_average(source: PlayerStats | Mapping[str, int], attributes: tuple[str, ...]) -> int:
-    if not attributes:
-        return 0
-    total = sum(_get_stat_value(source, attribute) for attribute in attributes)
-    return int(round(total / len(attributes)))
-
-
-def calculate_precise_overall(weighted_sum: float, divisor: float) -> float:
-    """Calcula overall com precisão de 2 casas decimais antes da exibição."""
-    safe_divisor = divisor if divisor else 1.0
-    return round(weighted_sum / safe_divisor, 2)
-
-
-def calculate_basketball_package_scores(source: PlayerStats | Mapping[str, int]) -> dict[str, int]:
-    """Calcula os 5 pacotes do basquete em escala 0-99."""
-    return {
-        package_name: _package_average(source, attributes)
-        for package_name, attributes in BASKETBALL_PACKAGES.items()
-    }
-
-
-def calculate_basketball_overall(position: str, source: PlayerStats | Mapping[str, int]) -> int:
-    """Calcula Overall de basquete usando pesos por posição e divisor específico."""
-    normalized_position = _normalize_position(position)
-    package_scores = calculate_basketball_package_scores(source)
-    weights = BASKETBALL_POSITION_WEIGHTS.get(normalized_position, BASKETBALL_POSITION_WEIGHTS["default"])
-    divisor = sum(weights.values()) or 1.0
-    weighted_sum = sum(package_scores[name] * weight for name, weight in weights.items())
-    overall = int(round(calculate_precise_overall(weighted_sum, divisor)))
-    return max(0, min(99, overall))
-
-
-def calculate_basketball_overall_by_position(
-    position: str,
-    source: PlayerStats | Mapping[str, int],
-) -> dict[str, Any]:
-    """Retorna o overall e os pacotes para renderização no mobile."""
-    return {
-        "position": _normalize_position(position),
-        "overall": calculate_basketball_overall(position, source),
-        "packages": calculate_basketball_package_scores(source),
-    }
-
-
-def _normalize_football_position(position: str | None) -> str:
-    """Normaliza posição para futebol."""
-    if not position:
-        return "default"
-    normalized = position.strip().lower().replace(" ", "_")
-    return FOOTBALL_POSITION_ALIASES.get(normalized, normalized)
-
-
-def calculate_football_package_scores(source: PlayerStats | Mapping[str, int]) -> dict[str, int]:
-    """Calcula os 5 pacotes do futebol em escala 0-99."""
-    return {
-        package_name: _package_average(source, attributes)
-        for package_name, attributes in FOOTBALL_PACKAGES.items()
-    }
-
-
-def calculate_football_overall(position: str, source: PlayerStats | Mapping[str, int], sub_type: str | None = None) -> int:
-    """Calcula Overall de futebol usando pesos por posição e aplica multiplicadores de sub_type.
-    
-    Args:
-        position: Posição do jogador (atacante, ponta, lateral, meia, zagueiro, goleiro)
-        source: Stats do jogador
-        sub_type: Variação do jogo (futsal, society, field, etc)
-        
-    Multiplicadores (antes da média final):
-        FUTSAL: agility 1.2x, ball_control 1.2x, stamina 0.8x
-        SOCIETY: long_shot 1.1x, strength 1.1x
-    """
-    def _load_calculations_module() -> Any:
-        global _CALCULATIONS_MODULE
-        if _CALCULATIONS_MODULE is None:
-            calculations_path = Path(__file__).resolve().with_name("calculations.py")
-            spec = importlib.util.spec_from_file_location("app.services.calculations", calculations_path)
-            if spec is None or spec.loader is None:
-                raise ImportError("Unable to load app.services.calculations")
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            _CALCULATIONS_MODULE = module
-        return _CALCULATIONS_MODULE
-
-    apply_sub_type_multipliers = _load_calculations_module().apply_sub_type_multipliers
-    
-    normalized_position = _normalize_football_position(position)
-    package_scores = calculate_football_package_scores(source)
-    weights = FOOTBALL_POSITION_WEIGHTS.get(normalized_position, FOOTBALL_POSITION_WEIGHTS["default"])
-    divisor = sum(weights.values()) or 1.0
-    
-    # Extrair atributos relevantes para multiplicadores
-    relevant_attrs = {
-        "agility": _get_stat_value(source, "agility"),
-        "ball_control": _get_stat_value(source, "ball_control"),
-        "stamina": _get_stat_value(source, "stamina"),
-        "long_shot": _get_stat_value(source, "long_shot"),
-        "strength": _get_stat_value(source, "strength"),
-    }
-    
-    # Aplicar multiplicadores de sub_type
-    adjusted_packages = apply_sub_type_multipliers(
-        package_scores,
-        relevant_attrs,
-        sub_type=sub_type,
-        sport_type="football",
-    )
-    
-    # Usar scores ajustados para weighted_sum
-    weighted_sum = sum(
-        adjusted_packages.get(name, float(package_scores[name])) * weight
-        for name, weight in weights.items()
-    )
-    
-    overall = int(round(calculate_precise_overall(weighted_sum, divisor)))
-    return max(0, min(99, overall))
-
-
-
-def calculate_football_overall_by_position(
-    position: str,
-    source: PlayerStats | Mapping[str, int],
-    sub_type: str | None = None,
-) -> dict[str, Any]:
-    """Retorna o overall e os pacotes para renderização no mobile."""
-    return {
-        "position": _normalize_football_position(position),
-        "overall": calculate_football_overall(position, source, sub_type),
-        "packages": calculate_football_package_scores(source),
-    }
-
-
-def _normalize_volleyball_position(position: str | None) -> str:
-    """Normaliza posição para vôlei."""
-    if not position:
-        return "default"
-    normalized = position.strip().lower().replace(" ", "_")
-    return VOLLEYBALL_POSITION_ALIASES.get(normalized, normalized)
-
-
-def _normalize_volleyball_sub_type(sub_type: str | None) -> str:
-    if not sub_type:
-        return ""
-    return sub_type.strip().lower().replace(" ", "_")
-
-
-VOLLEYBALL_PACKAGES: dict[str, tuple[str, ...]] = {
-    "attack": ("spike_power", "spike_accuracy", "jump", "reaction"),
-    "serve": ("serve_power", "serve_tactical", "game_vision"),
-    "defense": ("block", "reception", "floor_defense", "coverage"),
-    "setting": ("setting", "creativity", "game_vision"),
-    "movement": ("lateral_agility", "reaction", "stamina", "coordination"),
-}
-
-VOLLEYBALL_POSITION_WEIGHTS: dict[str, dict[str, float]] = {
-    "levantador": {
-        "attack": 2.0,
-        "serve": 2.0,
-        "defense": 1.5,
-        "setting": 3.5,
-        "movement": 1.5,
-    },
-    "ponteiro": {
-        "attack": 3.0,
-        "serve": 2.5,
-        "defense": 1.5,
-        "setting": 0.5,
-        "movement": 2.0,
-    },
-    "central": {
-        "attack": 2.5,
-        "serve": 1.5,
-        "defense": 3.0,
-        "setting": 1.0,
-        "movement": 2.5,
-    },
-    "oposto": {
-        "attack": 3.0,
-        "serve": 2.0,
-        "defense": 1.5,
-        "setting": 0.5,
-        "movement": 2.0,
-    },
-    "libero": {
-        "attack": 0.5,
-        "serve": 1.0,
-        "defense": 3.5,
-        "setting": 1.0,
-        "movement": 3.0,
-    },
-    "default": {
-        "attack": 1.0,
-        "serve": 1.0,
-        "defense": 1.0,
-        "setting": 1.0,
-        "movement": 1.0,
-    },
-}
-
-
-def calculate_volleyball_package_scores(source: PlayerStats | Mapping[str, int]) -> dict[str, int]:
-    """Calcula os 5 pacotes do vôlei em escala 0-99."""
-    return {
-        package_name: _package_average(source, attributes)
-        for package_name, attributes in VOLLEYBALL_PACKAGES.items()
-    }
-
-
-def _weighted_harmonic_mean(source: PlayerStats | Mapping[str, int], attributes: tuple[str, ...]) -> int:
-    total_weight = 0.0
-    inverse_sum = 0.0
-
-    for attribute in attributes:
-        weight = VOLLEYBALL_BEACH_WEIGHTS.get(attribute, 1.0)
-        value = _get_stat_value(source, attribute)
-
-        if value <= 0:
-            return 0
-
-        total_weight += weight
-        inverse_sum += weight / value
-
-    if not total_weight or not inverse_sum:
-        return 0
-
-    return int(round(total_weight / inverse_sum))
-
-
-def calculate_volleyball_overall(
-    position: str | None = None,
-    source: PlayerStats | Mapping[str, int] | None = None,
-    sub_type: str | None = None,
-    **kwargs,
-) -> int:
-    """Calcula Overall de vôlei usando pesos por posição.
-    
-    Suporta duas assinaturas:
-    - calculate_volleyball_overall(source) - compatibilidade com código antigo
-    - calculate_volleyball_overall(position, source) - nova versão com pesos
-    """
-    # Compatibilidade com código antigo que chama com apenas source
-    if source is None and isinstance(position, (PlayerStats, dict)):
-        source = position
-        position = None
-    
-    if source is None:
-        return 0
-
-    normalized_sub_type = _normalize_volleyball_sub_type(sub_type)
-
-    if normalized_sub_type == "beach":
-        beach_overall = _weighted_harmonic_mean(source, VOLLEYBALL_BEACH_ATTRIBUTES)
-        return max(0, min(99, beach_overall))
-    
-    package_scores = calculate_volleyball_package_scores(source)
-    
-    # Se não houver posição, usa média simples
-    if not position:
-        overall = int(round(calculate_precise_overall(sum(package_scores.values()), float(len(package_scores)))))
-        return max(0, min(99, overall))
-    
-    # Com posição, usa pesos específicos
-    normalized_position = _normalize_volleyball_position(position)
-    weights = VOLLEYBALL_POSITION_WEIGHTS.get(normalized_position, VOLLEYBALL_POSITION_WEIGHTS["default"])
-    divisor = sum(weights.values()) or 1.0
-    weighted_sum = sum(package_scores[name] * weight for name, weight in weights.items())
-    overall = int(round(calculate_precise_overall(weighted_sum, divisor)))
-    return max(0, min(99, overall))
-
-
-def calculate_volleyball_overall_by_position(
-    position: str,
-    source: PlayerStats | Mapping[str, int],
-    sub_type: str | None = None,
-) -> dict[str, Any]:
-    """Retorna o overall e os pacotes para renderização no mobile."""
-    normalized_sub_type = _normalize_volleyball_sub_type(sub_type)
-    if normalized_sub_type == "beach":
-        return {
-            "position": "beach",
-            "overall": calculate_volleyball_overall(position, source, sub_type=sub_type),
-            "packages": calculate_volleyball_package_scores(source),
-        }
-
-    return {
-        "position": _normalize_volleyball_position(position),
-        "overall": calculate_volleyball_overall(position, source, sub_type=sub_type),
-        "packages": calculate_volleyball_package_scores(source),
-    }
-
-
-def calculate_attribute_overall(position: str, source: PlayerStats | Mapping[str, int]) -> int:
-    """Alias poliatleta para modelos antigos que ainda usam a matriz de 6 atributos."""
-    from app.services.user_service import calculate_player_overall
-
-    return calculate_player_overall(
-        position=position,
-        pace=_get_stat_value(source, "pace"),
-        shooting=_get_stat_value(source, "shooting"),
-        passing=_get_stat_value(source, "passing"),
-        defense=_get_stat_value(source, "defense"),
-        physical=_get_stat_value(source, "physical"),
-        technique=_get_stat_value(source, "technique"),
-    )
 
 
 def _package_xp_to_attributes(package_xp: dict[str, int]) -> dict[str, int]:

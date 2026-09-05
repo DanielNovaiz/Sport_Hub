@@ -1,23 +1,11 @@
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
-import sys
-
 import pytest
 
 from app.models.player_stats import UserPrestige
 from tests.conftest import FakeAsyncSession, FakeResult
 
-
-_MAINTENANCE_PATH = Path(__file__).resolve().parents[1] / "app" / "services" / "maintenance_service.py"
-_MAINTENANCE_SPEC = importlib.util.spec_from_file_location("maintenance_service_for_tests", _MAINTENANCE_PATH)
-assert _MAINTENANCE_SPEC and _MAINTENANCE_SPEC.loader
-_MAINTENANCE_MODULE = importlib.util.module_from_spec(_MAINTENANCE_SPEC)
-sys.modules[_MAINTENANCE_SPEC.name] = _MAINTENANCE_MODULE
-_MAINTENANCE_SPEC.loader.exec_module(_MAINTENANCE_MODULE)
-
-credit_prestige_xp = _MAINTENANCE_MODULE.credit_prestige_xp
+from app.services.maintenance_service import credit_prestige_xp
 
 
 @pytest.mark.asyncio

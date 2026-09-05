@@ -1,28 +1,14 @@
 """
-Testes unitários para app/services/calculations.py
+Testes unitários para app/domain/overall_calculator.py
 Validação de multiplicadores de sub-tipo de esporte
 """
 
-import sys
-from pathlib import Path
-
-# Resolver importação do pacote
-workspace_root = Path(__file__).parent.parent
-sys.path.insert(0, str(workspace_root))
-
-# Importação direta do arquivo para evitar cadeias de dependências do pacote
-import importlib.util
-calc_spec = importlib.util.spec_from_file_location(
-    "calculations",
-    workspace_root / "app" / "services" / "calculations.py"
+from app.domain.overall_calculator import (
+    apply_sub_type_multipliers,
+    FUTSAL_MULTIPLIERS,
+    SOCIETY_MULTIPLIERS,
+    FOOTBALL_ATTRIBUTE_TO_PACKAGE,
 )
-calculations = importlib.util.module_from_spec(calc_spec)
-calc_spec.loader.exec_module(calculations)
-
-apply_sub_type_multipliers = calculations.apply_sub_type_multipliers
-FUTSAL_MULTIPLIERS = calculations.FUTSAL_MULTIPLIERS
-SOCIETY_MULTIPLIERS = calculations.SOCIETY_MULTIPLIERS
-FOOTBALL_ATTRIBUTE_TO_PACKAGE = calculations.FOOTBALL_ATTRIBUTE_TO_PACKAGE
 
 
 def test_futsal_multipliers_exist():

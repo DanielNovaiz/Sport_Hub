@@ -7,6 +7,12 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from app.models.player_stats import PlayerStats
+from app.domain.overall_calculator import (
+    calculate_attribute_overall,
+    calculate_basketball_overall,
+    calculate_football_overall,
+    calculate_volleyball_overall,
+)
 
 
 @dataclass(frozen=True)
@@ -49,13 +55,6 @@ def _normalize_sub_type(value: str | None, mode: str | None) -> str:
 
 
 def _calculate_sync(*, request: OverallRequest, source: PlayerStats | Mapping[str, int]) -> int:
-    from app.services.xp_service import (
-        calculate_attribute_overall,
-        calculate_basketball_overall,
-        calculate_football_overall,
-        calculate_volleyball_overall,
-    )
-
     sport = _normalize_sport(request.sport_type)
     sub_type = _normalize_sub_type(request.sub_type, request.mode)
     position = request.position or "default"

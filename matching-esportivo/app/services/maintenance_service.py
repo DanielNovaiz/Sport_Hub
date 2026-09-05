@@ -231,7 +231,7 @@ async def sync_user_prestige_entries(
     xp_rows: list[UserXP] | None = None,
 ) -> tuple[int, int]:
     """Garante UserPrestige para atributos no cap e credita excedente como Pontos de Estilo."""
-    from app.services.xp_constants import ALL_PROGRESS_ATTRIBUTES
+    from app.domain.xp_constants import ALL_PROGRESS_ATTRIBUTES
 
     xp_by_attribute = {row.attribute_name: row for row in (xp_rows or [])}
     prestige_rows_created = 0

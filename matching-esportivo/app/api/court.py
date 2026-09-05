@@ -11,7 +11,6 @@ from app.schemas.court import (
     BookingResponse,
     CourtListResponse,
     CourtCreate,
-    CourtRead,
     CourtResponse,
 )
 from app.services.court_service import (

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
-from app.schemas.ranked import BoxScoreCreate, BoxScoreResponse, RankedUsersResponse, UserRankRead, UserRankResponse
+from app.schemas.ranked import BoxScoreCreate, BoxScoreResponse, RankedUsersResponse, UserRankResponse
 from app.services.ranked_service import (
     get_user_rank_read,
     list_ranked_users,

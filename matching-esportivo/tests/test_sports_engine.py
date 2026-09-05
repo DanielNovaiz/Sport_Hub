@@ -1,34 +1,22 @@
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
-import sys
-
 import pytest
 
 from app.models.player_stats import MatchPerformance
 
-
-_XP_SERVICE_PATH = Path(__file__).resolve().parents[1] / "app" / "services" / "xp_service.py"
-_XP_SPEC = importlib.util.spec_from_file_location("xp_service_for_tests", _XP_SERVICE_PATH)
-assert _XP_SPEC and _XP_SPEC.loader
-_XP_MODULE = importlib.util.module_from_spec(_XP_SPEC)
-sys.modules[_XP_SPEC.name] = _XP_MODULE
-_XP_SPEC.loader.exec_module(_XP_MODULE)
-
-BASKETBALL_POSITION_WEIGHTS = _XP_MODULE.BASKETBALL_POSITION_WEIGHTS
-FOOTBALL_POSITION_WEIGHTS = _XP_MODULE.FOOTBALL_POSITION_WEIGHTS
-VOLLEYBALL_POSITION_WEIGHTS = _XP_MODULE.VOLLEYBALL_POSITION_WEIGHTS
-apply_multiplier = _XP_MODULE.apply_multiplier
-calculate_basketball_overall = _XP_MODULE.calculate_basketball_overall
-calculate_basketball_package_scores = _XP_MODULE.calculate_basketball_package_scores
-calculate_football_overall = _XP_MODULE.calculate_football_overall
-calculate_football_package_scores = _XP_MODULE.calculate_football_package_scores
-calculate_precise_overall = _XP_MODULE.calculate_precise_overall
-calculate_volleyball_overall = _XP_MODULE.calculate_volleyball_overall
-calculate_volleyball_package_scores = _XP_MODULE.calculate_volleyball_package_scores
-distribute_match_xp = _XP_MODULE.distribute_match_xp
-process_match_performance = _XP_MODULE.process_match_performance
+from app.domain.overall_calculator import (
+    BASKETBALL_POSITION_WEIGHTS,
+    FOOTBALL_POSITION_WEIGHTS,
+    VOLLEYBALL_POSITION_WEIGHTS,
+    calculate_basketball_overall,
+    calculate_basketball_package_scores,
+    calculate_football_overall,
+    calculate_football_package_scores,
+    calculate_precise_overall,
+    calculate_volleyball_overall,
+    calculate_volleyball_package_scores,
+)
+from app.services.xp_service import apply_multiplier, distribute_match_xp, process_match_performance
 
 
 def _uniform_basketball_stats(x: int) -> dict[str, int]:

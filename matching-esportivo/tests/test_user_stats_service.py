@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
-import sys
-
 import pytest
 
 from app.positions import POSITIONS_MAP, normalize_position_input
@@ -12,17 +8,8 @@ from app.models.user import User, UserInterest
 from app.schemas.user import PlayerStatsUpdate
 from tests.conftest import FakeAsyncSession, FakeResult
 
-
-_USER_SERVICE_PATH = Path(__file__).resolve().parents[1] / "app" / "services" / "user_service.py"
-_USER_SPEC = importlib.util.spec_from_file_location("user_service_for_tests", _USER_SERVICE_PATH)
-assert _USER_SPEC and _USER_SPEC.loader
-_USER_MODULE = importlib.util.module_from_spec(_USER_SPEC)
-sys.modules[_USER_SPEC.name] = _USER_MODULE
-_USER_SPEC.loader.exec_module(_USER_MODULE)
-
-calculate_player_overall = _USER_MODULE.calculate_player_overall
-calculate_playstyle_archetype = _USER_MODULE.calculate_playstyle_archetype
-update_user_stats = _USER_MODULE.update_user_stats
+from app.domain.overall_calculator import calculate_player_overall, calculate_playstyle_archetype
+from app.services.user_service import update_user_stats
 
 
 @pytest.mark.asyncio

@@ -22,80 +22,16 @@ from app.schemas.user import (
     UserXPRead,
     UserUpdate,
 )
-from app.services.xp_service import (
-    ALL_PROGRESS_ATTRIBUTES,
-    normalize_profile_sport_type,
-)
+from app.domain.xp_constants import ALL_PROGRESS_ATTRIBUTES
+from app.domain.overall_calculator import calculate_playstyle_archetype
+from app.services.xp_service import normalize_profile_sport_type
 from app.services.overall_engine import OverallRequest, calculate_overall_async
 from app.services.maintenance_service import sync_user_prestige_entries
 from app.services.club_service import list_user_synergy_badges
 from app.services.profile_cache_service import get_cached_user_profile, set_cached_user_profile
 from app.services.season_manager import get_user_season_snapshot
 
-PLAYER_OVERALL_WEIGHTS: dict[str, dict[str, float]] = {
-    "atacante": {
-        "pace": 0.22,
-        "shooting": 0.30,
-        "passing": 0.12,
-        "defense": 0.08,
-        "physical": 0.16,
-        "technique": 0.12,
-    },
-    "zagueiro": {
-        "pace": 0.12,
-        "shooting": 0.05,
-        "passing": 0.13,
-        "defense": 0.32,
-        "physical": 0.28,
-        "technique": 0.10,
-    },
-    "meia": {
-        "pace": 0.16,
-        "shooting": 0.15,
-        "passing": 0.28,
-        "defense": 0.12,
-        "physical": 0.10,
-        "technique": 0.19,
-    },
-    "ala": {
-        "pace": 0.24,
-        "shooting": 0.20,
-        "passing": 0.16,
-        "defense": 0.16,
-        "physical": 0.12,
-        "technique": 0.12,
-    },
-    "pivo": {
-        "pace": 0.08,
-        "shooting": 0.18,
-        "passing": 0.10,
-        "defense": 0.24,
-        "physical": 0.30,
-        "technique": 0.10,
-    },
-    "goleiro": {
-        "pace": 0.08,
-        "shooting": 0.02,
-        "passing": 0.16,
-        "defense": 0.34,
-        "physical": 0.24,
-        "technique": 0.16,
-    },
-    "default": {
-        "pace": 1 / 6,
-        "shooting": 1 / 6,
-        "passing": 1 / 6,
-        "defense": 1 / 6,
-        "physical": 1 / 6,
-        "technique": 1 / 6,
-    },
-}
 
-ARCHETYPE_THRESHOLDS: tuple[tuple[str, str], ...] = (
-    ("shooting", "Sharpshooter"),
-    ("defense", "Lockdown Defender"),
-    ("pace", "Speedster"),
-)
 
 ACHIEVEMENT_TIER_ORDER: dict[str, int] = {
     "Bronze": 0,
@@ -265,85 +201,10 @@ async def _calculate_overall_for_sport(sport_type: str, stats: PlayerStats) -> i
     )
 
 
-def _normalize_position(position: str | None) -> str:
-    """Input: posição livre. Output: posição normalizada para tabela de pesos."""
-    if not position:
-        return "default"
-    normalized = position.strip().lower()
-    aliases = {
-        "striker": "atacante",
-        "forward": "atacante",
-        "defender": "zagueiro",
-        "centerback": "zagueiro",
-        "midfielder": "meia",
-        "center_basket": "pivo",
-        "wing": "ala",
-        "winger": "ala",
-        "center": "pivo",
-        "pivot": "pivo",
-        "goalkeeper": "goleiro",
-        "keeper": "goleiro",
-    }
-    normalized = aliases.get(normalized, normalized)
-    if normalized in PLAYER_OVERALL_WEIGHTS:
-        return normalized
-    return "default"
 
 
-def calculate_player_overall(
-    position: str,
-    pace: int,
-    shooting: int,
-    passing: int,
-    defense: int,
-    physical: int,
-    technique: int,
-) -> int:
-    """Input: posição e atributos [0-99]. Output: overall [0-99] por média ponderada."""
-    weights = PLAYER_OVERALL_WEIGHTS[_normalize_position(position)]
-    attributes = {
-        "pace": pace,
-        "shooting": shooting,
-        "passing": passing,
-        "defense": defense,
-        "physical": physical,
-        "technique": technique,
-    }
-    weighted_sum = sum(attributes[name] * weight for name, weight in weights.items())
-    overall = int(round(weighted_sum))
-    return max(0, min(99, overall))
 
 
-def calculate_playstyle_archetype(
-    pace: int,
-    shooting: int,
-    passing: int,
-    defense: int,
-    physical: int,
-    technique: int,
-) -> str:
-    """Input: atributos [0-100]. Output: arquétipo principal baseado no maior atributo."""
-    attrs = {
-        "pace": pace,
-        "shooting": shooting,
-        "passing": passing,
-        "defense": defense,
-        "physical": physical,
-        "technique": technique,
-    }
-    strongest_attr = max(attrs, key=attrs.get)
-    strongest_value = attrs[strongest_attr]
-    if strongest_value < 85:
-        return "Balanced"
-
-    threshold_map = dict(ARCHETYPE_THRESHOLDS)
-    if strongest_attr in threshold_map:
-        return threshold_map[strongest_attr]
-    if strongest_attr in {"passing", "technique"}:
-        return "Playmaker"
-    if strongest_attr == "physical":
-        return "Powerhouse"
-    return "Balanced"
 
 
 async def _assert_unique_email_username(

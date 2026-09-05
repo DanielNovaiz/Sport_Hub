@@ -2,25 +2,16 @@
 
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
-import sys
-
 import pytest
 
-_XP_SERVICE_PATH = Path(__file__).resolve().parents[1] / "app" / "services" / "xp_service.py"
-_XP_SPEC = importlib.util.spec_from_file_location("xp_service_for_tests", _XP_SERVICE_PATH)
-assert _XP_SPEC and _XP_SPEC.loader
-_XP_MODULE = importlib.util.module_from_spec(_XP_SPEC)
-sys.modules[_XP_SPEC.name] = _XP_MODULE
-_XP_SPEC.loader.exec_module(_XP_MODULE)
-
-calculate_football_overall = _XP_MODULE.calculate_football_overall
-calculate_football_overall_by_position = _XP_MODULE.calculate_football_overall_by_position
-calculate_football_package_scores = _XP_MODULE.calculate_football_package_scores
-calculate_volleyball_overall = _XP_MODULE.calculate_volleyball_overall
-calculate_volleyball_overall_by_position = _XP_MODULE.calculate_volleyball_overall_by_position
-calculate_volleyball_package_scores = _XP_MODULE.calculate_volleyball_package_scores
+from app.domain.overall_calculator import (
+    calculate_football_overall,
+    calculate_football_overall_by_position,
+    calculate_football_package_scores,
+    calculate_volleyball_overall,
+    calculate_volleyball_overall_by_position,
+    calculate_volleyball_package_scores,
+)
 
 
 # ============================================================================

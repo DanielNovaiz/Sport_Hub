@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import get_session
+from app.core.database import get_session
 from app.schemas.user import (
     PlayerStatsResponse,
     PlayerStatsUpdate,

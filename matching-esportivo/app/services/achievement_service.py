@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domain.achievement_rules import apply_achievement_rarity_bonus, resolve_achievement_rarity
 from app.models.player_stats import MatchPerformance, UserAchievement
 
 
@@ -36,30 +37,6 @@ ACHIEVEMENT_SPECS: tuple[AchievementSpec, ...] = (
         base_bonus_value=5,
     ),
 )
-
-ACHIEVEMENT_RARITY_MULTIPLIERS: dict[str, float] = {
-    "Bronze": 1.0,
-    "Silver": 1.5,
-    "Gold": 2.5,
-}
-
-
-def resolve_achievement_rarity(code_count: int, total_count: int) -> str:
-    """Define a raridade com base na frequência global do evento."""
-    if total_count <= 0 or code_count <= 0:
-        return "Bronze"
-
-    frequency = code_count / total_count
-    if frequency <= 0.05:
-        return "Gold"
-    if frequency <= 0.20:
-        return "Silver"
-    return "Bronze"
-
-
-def apply_achievement_rarity_bonus(base_bonus_value: int, tier: str) -> int:
-    multiplier = ACHIEVEMENT_RARITY_MULTIPLIERS.get(tier, 1.0)
-    return max(0, int(round(base_bonus_value * multiplier)))
 
 
 async def _get_global_achievement_frequency(session: AsyncSession, code: str) -> tuple[int, int]:

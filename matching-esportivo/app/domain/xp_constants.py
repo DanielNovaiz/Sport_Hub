@@ -64,5 +64,4 @@ ALL_PROGRESS_ATTRIBUTES: tuple[str, ...] = (
     "reb_predict",
     "combativeness",
 )
-
 ALL_PROGRESS_ATTRIBUTES = tuple(dict.fromkeys(ALL_PROGRESS_ATTRIBUTES))

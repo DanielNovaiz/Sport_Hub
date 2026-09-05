@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.users import router as users_router
-from app.core import get_session
+from app.core.database import get_session
 
 
 def test_user_profile_and_stats_routes_smoke(monkeypatch) -> None:
